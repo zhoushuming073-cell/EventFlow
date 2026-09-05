@@ -1,0 +1,32 @@
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #f0faf4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56rpx;
+}
+
+.profile-name {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.menu-item {
+  padding: 28rpx 24rpx;
+}
+
+.logout-btn {
+  margin-top: 40rpx;
+  background: #ffffff;
+  color: #fa5151;
+  border-radius: 12rpx;
+}

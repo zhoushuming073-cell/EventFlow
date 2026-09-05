@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="card-panel profile-head">
+    <view class="avatar">🧂</view>
+    <view class="profile-info">
+      <view class="profile-name">EventFlow 用户</view>
+      <view class="text-muted">用户 ID: {{userId || '未登录'}}</view>
+    </view>
+  </view>
+
+  <view class="card-panel menu-item">关于 EventFlow</view>
+  <view class="card-panel menu-item">设置</view>
+
+  <button class="logout-btn" bindtap="onLogout">退出登录</button>
+</view>

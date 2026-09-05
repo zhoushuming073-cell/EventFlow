@@ -1,0 +1,39 @@
+<view class="container">
+  <view class="section-title">卡片列表</view>
+
+  <view wx:if="{{cards.length === 0}}" class="empty">暂无卡片</view>
+
+  <view wx:for="{{cards}}" wx:key="id" class="card-panel card-item">
+    <view class="card-icon">{{item.icon || '📌'}}</view>
+    <view class="card-info">
+      <view class="card-name">{{item.name}}</view>
+      <view class="text-muted">{{item.type === 'point' ? '即时记录' : '计时'}}</view>
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="onShowCreate">新建卡片</button>
+
+  <view wx:if="{{showCreate}}" class="modal-mask">
+    <view class="modal">
+      <view class="modal-title">新建卡片</view>
+      <input class="field" placeholder="名称" value="{{newName}}" bindinput="onNameInput" />
+      <input class="field" placeholder="图标(emoji，可选)" value="{{newIcon}}" bindinput="onIconInput" />
+      <view class="type-row">
+        <view
+          class="type-item {{newType === 'point' ? 'active' : ''}}"
+          bindtap="onSelectType"
+          data-type="point"
+        >即时</view>
+        <view
+          class="type-item {{newType === 'duration' ? 'active' : ''}}"
+          bindtap="onSelectType"
+          data-type="duration"
+        >计时</view>
+      </view>
+      <view class="modal-actions">
+        <button class="cancel-btn" bindtap="onCancelCreate">取消</button>
+        <button class="btn-primary confirm-btn" loading="{{loading}}" bindtap="onCreate">创建</button>
+      </view>
+    </view>
+  </view>
+</view>

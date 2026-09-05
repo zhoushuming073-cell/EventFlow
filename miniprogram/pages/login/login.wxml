@@ -1,0 +1,7 @@
+<view class="login-container">
+  <view class="logo">EventFlow</view>
+  <view class="subtitle">极简事件记录器</view>
+  <button class="btn-primary login-btn" loading="{{loading}}" bindtap="onLogin">
+    微信一键登录
+  </button>
+</view>

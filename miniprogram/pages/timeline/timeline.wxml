@@ -1,0 +1,46 @@
+<view class="container">
+  <view wx:if="{{!spaceId}}" class="empty">
+    <view>还没有选择空间</view>
+    <button class="btn-primary go-btn" bindtap="onGoSpaces">去选择空间</button>
+  </view>
+
+  <block wx:else>
+    <!-- 进行中的事件 -->
+    <view wx:if="{{ongoing}}" class="card-panel ongoing">
+      <view class="ongoing-icon">{{ongoing.cardIcon}}</view>
+      <view class="ongoing-info">
+        <view class="ongoing-name">{{ongoing.cardName}}</view>
+        <view class="text-muted">{{ongoing.startLabel}} 开始</view>
+      </view>
+      <button class="end-btn" bindtap="onEndOngoing">结束</button>
+    </view>
+
+    <!-- 卡片区 -->
+    <view class="section-title">快速记录</view>
+    <view class="card-grid">
+      <view
+        wx:for="{{cards}}"
+        wx:key="id"
+        class="card-item {{item.type === 'duration' ? 'duration' : ''}}"
+        bindtap="onTapCard"
+        data-id="{{item.id}}"
+      >
+        <view class="card-icon">{{item.icon || '📌'}}</view>
+        <view class="card-name">{{item.name}}</view>
+      </view>
+    </view>
+
+    <!-- 今日事件列表 -->
+    <view class="section-title">今日事件</view>
+    <view wx:if="{{events.length === 0}}" class="empty">今天还没有记录</view>
+    <view wx:for="{{events}}" wx:key="id" class="card-panel event-item">
+      <view class="event-icon">{{item.cardIcon}}</view>
+      <view class="event-info">
+        <view class="event-name">{{item.cardName}}</view>
+        <view class="text-muted">
+          {{item.startLabel}}{{item.endLabel === '进行中' ? ' · 进行中' : ' - ' + item.endLabel}}
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

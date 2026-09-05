@@ -1,0 +1,50 @@
+<view class="container">
+  <view class="section-title">我的空间</view>
+
+  <view wx:if="{{spaces.length === 0}}" class="empty">
+    还没有空间，点击下方按钮创建一个
+  </view>
+
+  <view
+    wx:for="{{spaces}}"
+    wx:key="id"
+    class="card-panel space-item"
+    bindtap="onSelectSpace"
+    data-id="{{item.id}}"
+  >
+    <view class="space-name">{{item.name}}</view>
+    <view class="text-muted">{{item.type}} · 邀请码 {{item.invite_code}}</view>
+  </view>
+
+  <button class="btn-primary" bindtap="onShowCreate">创建空间</button>
+
+  <view wx:if="{{showCreate}}" class="modal-mask">
+    <view class="modal">
+      <view class="modal-title">创建空间</view>
+      <input
+        class="name-input"
+        placeholder="空间名称"
+        value="{{newName}}"
+        bindinput="onNameInput"
+      />
+      <view class="template-list">
+        <view
+          wx:for="{{templates}}"
+          wx:key="key"
+          class="template-item {{selectedTemplate === item.key ? 'active' : ''}}"
+          bindtap="onSelectTemplate"
+          data-key="{{item.key}}"
+        >
+          <view class="template-label">{{item.label}}</view>
+          <view class="template-desc">{{item.desc}}</view>
+        </view>
+      </view>
+      <view class="modal-actions">
+        <button class="cancel-btn" bindtap="onCancelCreate">取消</button>
+        <button class="btn-primary confirm-btn" loading="{{loading}}" bindtap="onCreate">
+          创建
+        </button>
+      </view>
+    </view>
+  </view>
+</view>
