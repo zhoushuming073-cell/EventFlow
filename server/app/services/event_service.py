@@ -1,6 +1,7 @@
 from datetime import datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models import Card, Event
@@ -16,17 +17,24 @@ def _utc_now() -> datetime:
 def list_events(
     db: Session,
     space_id: int,
-    start_at: datetime | None = None,
-    end_at: datetime | None = None,
+    query_start: datetime | None = None,
+    query_end: datetime | None = None,
 ) -> list[Event]:
-    """查询事件，支持时间区间过滤，默认查全部（含进行中）。"""
+    """查询事件。
+
+    当给定 query_start/query_end 时，按「事件时间区间与查询区间重叠」过滤：
+      - 事件的 start_at 早于查询区间结束
+      - 且 (事件未结束 或 事件 end_at 晚于查询区间开始)
+    这样能覆盖跨天事件（如 23:00 开始、次日 07:00 结束的睡觉）。
+    """
     q = db.query(Event).filter(
         Event.space_id == space_id, Event.deleted_at.is_(None)
     )
-    if start_at:
-        q = q.filter(Event.start_at >= start_at)
-    if end_at:
-        q = q.filter(Event.start_at <= end_at)
+    if query_start is not None and query_end is not None:
+        q = q.filter(
+            Event.start_at < query_end,
+            or_(Event.end_at.is_(None), Event.end_at > query_start),
+        )
     return q.order_by(Event.start_at.desc()).all()
 
 
@@ -44,23 +52,27 @@ def create_event(db: Session, user_id: int, payload: EventCreate) -> Event:
     if card.type == TYPE_POINT:
         end_at = start_at
 
-    # duration 卡片：进行中事件防重复（同一空间同一卡片同时只允许一个未结束）
+    # duration 卡片：同一用户在同一 Space 同一时间只能有一个进行中的持续事件。
+    # 启动新的持续事件时，自动结束上一个进行中的事件。
     if card.type == TYPE_DURATION and end_at is None:
         ongoing = (
             db.query(Event)
             .filter(
                 Event.space_id == payload.space_id,
-                Event.card_id == card.id,
+                Event.user_id == user_id,
                 Event.end_at.is_(None),
                 Event.deleted_at.is_(None),
             )
-            .first()
+            .all()
         )
-        if ongoing is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="该卡片已有进行中的事件",
-            )
+        for ev in ongoing:
+            # 同一张卡重复启动属于误操作，直接返回冲突提示；不同卡则自动结束上一张
+            if ev.card_id == card.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="该卡片已有进行中的事件",
+                )
+            ev.end_at = start_at
 
     if end_at is not None and end_at < start_at:
         raise HTTPException(
@@ -125,7 +137,10 @@ def delete_event(db: Session, event: Event) -> None:
 
 
 def day_range_utc(day: str) -> tuple[datetime, datetime]:
-    """将 'YYYY-MM-DD' 视为当天（东八区）换算为 UTC 区间。"""
+    """将 'YYYY-MM-DD'（东八区当天）换算为 UTC 区间 [start, end)。
+
+    返回的 start/end 是 UTC naive datetime，供区间重叠查询使用。
+    """
     try:
         d = datetime.strptime(day, "%Y-%m-%d").date()
     except ValueError as e:
@@ -134,4 +149,7 @@ def day_range_utc(day: str) -> tuple[datetime, datetime]:
     tz = timezone(timedelta(hours=8))
     start_local = datetime.combine(d, time.min, tzinfo=tz)
     end_local = start_local + timedelta(days=1)
-    return start_local.astimezone(timezone.utc).replace(tzinfo=None), end_local.astimezone(timezone.utc).replace(tzinfo=None)
+    return (
+        start_local.astimezone(timezone.utc).replace(tzinfo=None),
+        end_local.astimezone(timezone.utc).replace(tzinfo=None),
+    )

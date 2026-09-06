@@ -13,8 +13,10 @@ services:
       - --default-time-zone=+00:00
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-    ports:
-      - "3306:3306"
+    # 生产环境不暴露 3306 到宿主机公网，仅内部网络访问。
+    # 本地开发如需直连，用 `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`
+    expose:
+      - "3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -36,8 +38,10 @@ services:
       WECHAT_APP_ID: ${WECHAT_APP_ID}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
       JWT_SECRET: ${JWT_SECRET}
-    ports:
-      - "8000:8000"
+      ENV: ${ENV:-prod}
+    # 生产环境不暴露 8000，仅通过 nginx 反向代理访问。
+    expose:
+      - "8000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -48,6 +52,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

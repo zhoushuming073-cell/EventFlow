@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.schemas.common import UtcDateTime
+
 
 class EventCreate(BaseModel):
     space_id: int
@@ -37,8 +39,8 @@ class EventOut(BaseModel):
     space_id: int
     card_id: int
     user_id: int
-    start_at: datetime
-    end_at: datetime | None
+    start_at: UtcDateTime
+    end_at: UtcDateTime | None
     data: dict
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime

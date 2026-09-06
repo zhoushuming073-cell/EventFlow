@@ -1,6 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import UtcDateTime
 
 
 class UserOut(BaseModel):
@@ -10,4 +10,4 @@ class UserOut(BaseModel):
     openid: str
     nickname: str | None
     avatar_url: str | None
-    created_at: datetime
+    created_at: UtcDateTime

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.common import UtcDateTime
+
 SpaceType = Literal["baby", "study", "daily", "pet", "custom"]
 RoleType = Literal["owner", "admin", "member"]
 
@@ -20,7 +22,7 @@ class SpaceOut(BaseModel):
     type: str
     owner_id: int
     invite_code: str
-    created_at: datetime
+    created_at: UtcDateTime
     role: str | None = None  # 当前用户在空间中的角色
 
 

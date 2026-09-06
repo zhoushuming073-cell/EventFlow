@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.common import UtcDateTime
+
 CardType = Literal["point", "duration"]
 
 
@@ -32,5 +34,5 @@ class CardOut(BaseModel):
     type: str
     sort_order: int
     config: dict
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime

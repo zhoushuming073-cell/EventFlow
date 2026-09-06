@@ -139,3 +139,86 @@ def test_cannot_reopen_finished_event(client, auth_headers):
         f"/api/events/{ev['id']}", json={"end_at": None}, headers=auth_headers
     )
     assert resp.status_code == 400
+
+
+def test_start_new_duration_auto_ends_previous(client, auth_headers):
+    """启动不同的 duration 卡片时，自动结束上一个进行中的事件。"""
+    space, cards = _setup(client, auth_headers, "study")
+    dur_cards = [c for c in cards if c["type"] == "duration"]
+    assert len(dur_cards) >= 2
+
+    # 启动第一张
+    first = client.post(
+        "/api/events",
+        json={"space_id": space["id"], "card_id": dur_cards[0]["id"]},
+        headers=auth_headers,
+    ).json()
+    assert first["end_at"] is None
+
+    # 启动第二张（不同卡）
+    second = client.post(
+        "/api/events",
+        json={"space_id": space["id"], "card_id": dur_cards[1]["id"]},
+        headers=auth_headers,
+    ).json()
+    assert second["end_at"] is None  # 新事件进行中
+
+    # 第一张应被自动结束
+    first_after = client.get(
+        f"/api/spaces/{space['id']}/events", headers=auth_headers
+    ).json()
+    ended = next(e for e in first_after if e["id"] == first["id"])
+    assert ended["end_at"] is not None
+
+
+def test_day_query_returns_cross_midnight_event(client, auth_headers):
+    """跨天事件（前一天开始、当天结束）应出现在当天查询结果中。"""
+    space, cards = _setup(client, auth_headers, "study")
+    dur_card = next(c for c in cards if c["type"] == "duration")
+
+    # 直接通过数据库插入一个跨天事件：昨晚 23:00 开始、今天 07:00 结束
+    from datetime import datetime, timedelta, timezone
+    from app.database import TestingSessionLocal
+    from app.models import Event
+
+    tz8 = timezone(timedelta(hours=8))
+    today = datetime.now(tz8).date()
+    start_utc = datetime.combine(today, datetime.min.time(), tzinfo=tz8) - timedelta(hours=1)  # 昨天 23:00
+    end_utc = datetime.combine(today, datetime.min.time(), tzinfo=tz8) + timedelta(hours=7)  # 今天 07:00
+    start_naive = start_utc.astimezone(timezone.utc).replace(tzinfo=None)
+    end_naive = end_utc.astimezone(timezone.utc).replace(tzinfo=None)
+
+    db = TestingSessionLocal()
+    db.add(
+        Event(
+            space_id=space["id"],
+            card_id=dur_card["id"],
+            user_id=1,
+            start_at=start_naive,
+            end_at=end_naive,
+            data={},
+        )
+    )
+    db.commit()
+    db.close()
+
+    day = today.strftime("%Y-%m-%d")
+    events = client.get(
+        f"/api/spaces/{space['id']}/events?day={day}", headers=auth_headers
+    ).json()
+    # 跨天事件应被包含
+    assert any(e["card_id"] == dur_card["id"] for e in events)
+
+
+def test_event_output_has_utc_timezone(client, auth_headers):
+    """事件时间输出应带 UTC 时区标记（Z），供前端正确解析。"""
+    space, cards = _setup(client, auth_headers, "baby")
+    point_card = next(c for c in cards if c["type"] == "point")
+    ev = client.post(
+        "/api/events",
+        json={"space_id": space["id"], "card_id": point_card["id"]},
+        headers=auth_headers,
+    ).json()
+    # 输出应是带 Z 或 +00:00 的 ISO 时间
+    assert ev["start_at"].endswith("Z") or "+00:00" in ev["start_at"]
+    assert ev["end_at"].endswith("Z") or "+00:00" in ev["end_at"]

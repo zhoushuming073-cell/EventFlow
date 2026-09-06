@@ -18,11 +18,11 @@ def list_events(
     current_user: User = Depends(get_current_user),
 ) -> list[EventOut]:
     get_space_membership(space_id, current_user.id, db)
-    start_at = None
-    end_at = None
+    query_start = None
+    query_end = None
     if day:
-        start_at, end_at = event_service.day_range_utc(day)
-    return event_service.list_events(db, space_id, start_at, end_at)
+        query_start, query_end = event_service.day_range_utc(day)
+    return event_service.list_events(db, space_id, query_start, query_end)
 
 
 @router.post("/api/events", response_model=EventOut, status_code=201)

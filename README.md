@@ -39,22 +39,27 @@ event-flow/
 
 ## 本地运行
 
-### 1. 后端（Docker Compose，推荐）
+### 1. 后端（Docker Compose）
 
 ```bash
 # 复制环境变量
 cp .env.example .env
-# 编辑 .env，至少设置 MYSQL_PASSWORD、WECHAT_APP_ID、WECHAT_APP_SECRET、JWT_SECRET
+# 编辑 .env，设置 MYSQL_PASSWORD、WECHAT_APP_ID、WECHAT_APP_SECRET、JWT_SECRET
 
-# 启动 MySQL + FastAPI + Nginx
+# 启动 MySQL + FastAPI + Nginx（生产模式：仅暴露 Nginx 80/443，MySQL/FastAPI 走内部网络）
 docker compose up -d --build
 
 # 初始化数据库（首次）
 docker compose exec server alembic upgrade head
 ```
 
+> **本地开发**需要直连 MySQL(3306) / FastAPI(8000) 时，用 dev override：
+> ```bash
+> docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+> ```
+
 访问：
-- API 文档：<http://localhost:8000/docs>
+- API 文档：<http://localhost:8000/docs>（生产仅通过 Nginx，需 dev override 才直连 8000）
 - 健康检查：<http://localhost:8000/health>
 - Nginx 代理：<http://localhost/docs>
 
@@ -74,6 +79,7 @@ uvicorn app.main:app --reload
 
 > 本地无真实微信 AppID 时，可在 `.env` 设置 `WECHAT_MOCK_OPENID=任意字符串`，
 > 登录接口将跳过真实微信调用，直接使用该 openid。
+> **注意**：`ENV=prod` 时禁止设置 Mock 登录，且会强制校验 JWT/微信配置。
 
 ### 3. 运行测试
 
@@ -98,9 +104,10 @@ pytest
 
 | 变量 | 说明 |
 |------|------|
+| `ENV` | 运行环境 `dev`/`prod`。`prod` 下强制校验 JWT/微信配置，禁止 Mock 登录 |
 | `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_DATABASE` / `MYSQL_USER` / `MYSQL_PASSWORD` | 数据库连接 |
 | `WECHAT_APP_ID` / `WECHAT_APP_SECRET` | 微信小程序凭据（**仅存环境变量，禁止入库**） |
-| `JWT_SECRET` | JWT 签名密钥 |
+| `JWT_SECRET` | JWT 签名密钥（生产必须 ≥16 字符） |
 | `WECHAT_MOCK_OPENID` | 本地测试用，跳过真实微信调用 |
 
 ## 数据模型
@@ -130,7 +137,9 @@ pytest
 
 ## 设计约定
 
-- 数据库时间统一 UTC；接口按 `day=YYYY-MM-DD`（东八区）过滤当天事件。
+- 数据库统一存 UTC；API 输出的时间带 `Z` 时区标记（如 `2026-09-05T07:30:00Z`），前端 JS 可直接正确解析。
+- 接口按 `day=YYYY-MM-DD`（东八区）过滤当天事件，采用「区间重叠」语义，跨天事件（如 23:00 睡到次日 07:00）也能正确命中。
+- 同一用户在同一 Space 同一时间只允许一个进行中的持续事件，启动新卡片会自动结束上一个。
 - Event / Card 均软删除。
 - 权限：owner/admin 可管理卡片，member 只读卡片、可创建/修改自己的事件。
 - 不引入 Redis / Celery / 消息队列 / 微服务。

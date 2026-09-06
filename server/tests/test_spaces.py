@@ -58,3 +58,17 @@ def test_cannot_access_other_user_space(client, auth_headers):
 
     resp = client.get(f"/api/spaces/{space_id}/cards", headers=headers_b)
     assert resp.status_code == 403
+
+
+def test_daily_and_pet_templates_have_cards(client, auth_headers):
+    """daily 和 pet 模板应预置卡片，不能是空空间。"""
+    for template in ("daily", "pet"):
+        space = client.post(
+            "/api/spaces",
+            json={"name": template, "type": template},
+            headers=auth_headers,
+        ).json()
+        cards = client.get(
+            f"/api/spaces/{space['id']}/cards", headers=auth_headers
+        ).json()
+        assert len(cards) > 0, f"{template} 模板应有预置卡片"
